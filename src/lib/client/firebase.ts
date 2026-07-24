@@ -61,7 +61,9 @@ export async function createFirebaseRoom(hostId: string) {
 export async function firebaseGet<T>(path: string): Promise<T | null> {
   const response = await fetch(firebaseUrl(path), { cache: "no-store" });
   if (!response.ok) throw new Error(`Firebase returned ${response.status}`);
-  return (await response.json()) as T | null;
+  const data = (await response.json()) as T | null;
+  if (path.endsWith("/state") && data) return normalizeRoomState(data as unknown as PublicRoomState) as T;
+  return data;
 }
 
 export async function firebasePut(path: string, body: unknown) {
@@ -119,6 +121,22 @@ function createInitialRoomState(roomId: string, roomCode: string, hostId: string
     finishedReason: null,
     countdownEndsAt: null,
     results: null
+  };
+}
+
+function normalizeRoomState(state: PublicRoomState): PublicRoomState {
+  return {
+    ...state,
+    players: Array.isArray(state.players) ? state.players : [],
+    history: Array.isArray(state.history) ? state.history : [],
+    connectedPlayerCount: Array.isArray(state.players) ? state.players.filter((player) => player.connected).length : 0,
+    results: state.results
+      ? {
+          ...state.results,
+          leaderboard: Array.isArray(state.results.leaderboard) ? state.results.leaderboard : [],
+          awards: Array.isArray(state.results.awards) ? state.results.awards : []
+        }
+      : null
   };
 }
 

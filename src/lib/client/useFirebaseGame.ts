@@ -214,6 +214,7 @@ async function processHostQueues(current: PublicRoomState, publishState: (state:
 
   for (const [playerId, join] of Object.entries(joins)) {
     nextState = upsertPlayer(nextState, playerId, join.displayName, join.joinedAt);
+    await firebaseDelete(`rooms/${roomId}/joins/${playerId}`).catch(() => undefined);
     changed = true;
   }
 
