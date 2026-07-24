@@ -185,7 +185,11 @@ export default function HostPage() {
               </p>
             ) : null}
             {hostMessage ? <p className="mt-2 border-[4px] border-cyan bg-tile px-3 py-2 text-sm font-black text-cyan">{hostMessage}</p> : null}
-            {isBetweenRounds ? (
+            {isFinished ? (
+              <button className="pixel-button mt-4 w-full bg-cyan px-3 py-3" disabled={!hostReady} onClick={leaveToCreate}>
+                Create Game
+              </button>
+            ) : isBetweenRounds ? (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button className="pixel-button px-3 py-3" disabled={!hostReady} onClick={() => sendHost({ type: "HOST_START_GAME" }, "Next round started.")}>
                   Next: {nextDifficulty}
