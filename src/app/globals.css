@@ -93,6 +93,11 @@ select {
   box-shadow: inset 4px 4px 0 rgba(5, 8, 22, 0.35), 1px 1px 0 #050816;
 }
 
+.dpad-button:active:not(:disabled) {
+  transform: none;
+  box-shadow: inset 4px 4px 0 rgba(5, 8, 22, 0.35), 5px 5px 0 #050816;
+}
+
 .pixel-button:disabled {
   filter: grayscale(0.65);
   opacity: 0.6;

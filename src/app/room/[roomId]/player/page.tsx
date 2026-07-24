@@ -143,13 +143,13 @@ export default function PlayerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-ink px-4 py-5 text-bone">
-      <div className="mx-auto flex max-w-md flex-col gap-4">
-        <header className="pixel-panel p-4">
-          <div className="flex items-start justify-between gap-3">
-            {joined ? <div>
+    <main className="h-[100dvh] overflow-hidden bg-ink px-4 py-5 text-bone">
+      <div className="mx-auto flex h-full max-w-md flex-col gap-4 overflow-hidden">
+        <header className="pixel-panel h-[184px] overflow-hidden p-4">
+          <div className="flex h-[58px] items-start justify-between gap-3 overflow-hidden">
+            {joined ? <div className="min-w-0 flex-1">
               <p className="hud-label">Innovation Showmaze controller</p>
-              <h1 className="pixel-title text-3xl text-cyan">{state?.roomCode ?? roomId}</h1>
+              <h1 className="pixel-title truncate text-3xl text-cyan">{state?.roomCode ?? roomId}</h1>
             </div> : <p className="hud-label">Join controller</p>}
             <div className={`border-[4px] border-cyan px-2 py-1 text-xs font-black uppercase ${isOnline ? "bg-mint text-ink" : "bg-coral text-ink"}`}>
               {displayStatus}
@@ -161,8 +161,8 @@ export default function PlayerPage() {
           <p className="mt-1 font-mono text-xs text-cyan">
             Queued {state?.pendingInputCount ?? 0}
           </p>
-          <p className="mt-2 text-sm text-bone/75">{feedback}{visibleError ? ` ${visibleError}` : ""}</p>
-          {!isOnline && socketUrl ? <p className="mt-2 break-all font-mono text-[10px] text-coral">{socketUrl}</p> : null}
+          <p className="mt-2 h-[2.5rem] overflow-hidden text-sm leading-5 text-bone/75">{feedback}{visibleError ? ` ${visibleError}` : ""}</p>
+          <p className="mt-2 h-4 overflow-hidden break-all font-mono text-[10px] text-coral">{!isOnline && socketUrl ? socketUrl : ""}</p>
         </header>
 
         {!joined ? (
@@ -196,7 +196,7 @@ export default function PlayerPage() {
         ) : null}
 
         {joined && state?.status === "countdown" ? (
-          <section className="pixel-panel p-5 text-center">
+          <section className="pixel-panel h-[360px] p-5 text-center">
             <p className="hud-label">Get ready</p>
             <p className="pixel-title mt-3 text-6xl text-gold">
               {Math.max(1, Math.ceil(((state.countdownEndsAt ?? now) - now) / 1000))}
@@ -208,7 +208,7 @@ export default function PlayerPage() {
         ) : null}
 
         {joined && state?.status !== "countdown" ? (
-          <section className="pixel-panel p-5">
+          <section className="pixel-panel h-[360px] p-5">
             <div className="mx-auto grid w-72 grid-cols-3 grid-rows-3 gap-2">
               <div />
               <PadButton label="Up" onClick={() => submit("up")} disabled={!canMove} />
@@ -226,15 +226,15 @@ export default function PlayerPage() {
           </section>
         ) : null}
 
-        {joined ? <section className="grid grid-cols-2 gap-4">
-          <div className="pixel-panel p-4">
+        {joined ? <section className="grid min-h-0 grid-cols-2 gap-4 overflow-hidden">
+          <div className="pixel-panel overflow-hidden p-4">
             <p className="hud-label">You</p>
             <StatLine label="Submitted" value={me?.stats.submittedInputs ?? 0} />
             <StatLine label="Selected" value={me?.stats.selectedMoves ?? 0} />
             <StatLine label="Net" value={me?.stats.netContribution ?? 0} />
             <StatLine label="Walls" value={me?.stats.wallHits ?? 0} />
           </div>
-          <div className="pixel-panel p-4">
+          <div className="pixel-panel overflow-hidden p-4">
             <p className="hud-label">Leaders</p>
             <ol className="mt-2 space-y-1 text-sm">
               {state?.players.slice(0, 4).map((player, index) => (
@@ -254,7 +254,7 @@ export default function PlayerPage() {
 function PadButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled: boolean }) {
   const direction = label.toLowerCase() as Direction;
   return (
-    <button className="pixel-button grid aspect-square place-items-center text-ink" onClick={onClick} disabled={disabled} aria-label={label}>
+    <button className="pixel-button dpad-button grid aspect-square place-items-center text-ink" onClick={onClick} disabled={disabled} aria-label={label}>
       <PixelArrow direction={direction} />
     </button>
   );
