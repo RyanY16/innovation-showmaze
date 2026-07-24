@@ -145,9 +145,9 @@ export default function HostPage() {
           ) : (
             <div className="grid h-full min-h-[500px] content-start gap-5 p-5">
               <div>
-                <p className="hud-label">{isBetweenRounds ? "Round complete" : "Lobby"}</p>
-                <h2 className="pixel-title mt-2 text-5xl text-cyan">
-                  {isBetweenRounds ? `Round ${state?.completedRounds ?? 1} Cleared` : `Room ${state?.roomCode ?? "..."}`}
+                <p className="hud-label">{isBetweenRounds ? (state?.roundResult === "cleared" ? "Round complete" : "Round failed") : "Lobby"}</p>
+                <h2 className={`pixel-title mt-2 text-5xl ${state?.roundResult === "failed" ? "text-coral" : "text-cyan"}`}>
+                  {isBetweenRounds ? `Round ${state?.completedRounds ?? 1} ${state?.roundResult === "cleared" ? "Cleared" : "Failed"}` : `Room ${state?.roomCode ?? "..."}`}
                 </h2>
                 <p className="mt-3 text-bone/75">
                   {isBetweenRounds ? `Next up: Round ${nextRound} ${nextDifficulty}.` : "Players join here. Round 1 easy, round 2 medium, round 3 hard."}

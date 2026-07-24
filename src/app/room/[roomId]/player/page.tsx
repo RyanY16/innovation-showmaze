@@ -56,7 +56,7 @@ export default function PlayerPage() {
     if (!state?.currentWindowId) return;
     if (state.status === "countdown") setFeedback("Get ready.");
     else if (state.status === "playing" && state.currentWindowId !== submittedWindow) setFeedback("Window open. Choose a direction.");
-    else if (state.status === "round_over") setFeedback(`Round ${state.completedRounds} cleared. Waiting for next round.`);
+    else if (state.status === "round_over") setFeedback(`Round ${state.completedRounds} ${state.roundResult === "cleared" ? "cleared" : "failed"}. Waiting for next round.`);
     else if (state.status === "finished") {
       if (state.finishedReason === "won") setFeedback(state.selectedMove ? `${state.selectedMove.displayName} reached the exit.` : "Maze cleared.");
       else setFeedback("Game ended.");

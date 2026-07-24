@@ -49,8 +49,10 @@ export default function DisplayPage() {
           {state?.status === "round_over" ? (
             <div className="absolute inset-0 grid place-items-center bg-ink/85 p-8 text-center">
               <div>
-                <p className="hud-label">Round complete</p>
-                <h1 className="pixel-title mt-2 text-6xl text-cyan">Round {state.completedRounds} Cleared</h1>
+                <p className="hud-label">{state.roundResult === "cleared" ? "Round complete" : "Round failed"}</p>
+                <h1 className={`pixel-title mt-2 text-6xl ${state.roundResult === "cleared" ? "text-cyan" : "text-coral"}`}>
+                  Round {state.completedRounds} {state.roundResult === "cleared" ? "Cleared" : "Failed"}
+                </h1>
                 <p className="mt-4 text-2xl font-black text-mint">Next: Round {state.completedRounds + 1} / {state.totalRounds}</p>
               </div>
             </div>

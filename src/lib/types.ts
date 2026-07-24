@@ -3,6 +3,7 @@ export type Difficulty = "easy" | "medium" | "hard";
 export type RoomStatus = "lobby" | "countdown" | "playing" | "paused" | "round_over" | "finished";
 export type SelectionMode = "random" | "first" | "majority" | "weighted" | "chaos";
 export type FinishedReason = "won" | "ended";
+export type RoundResult = "cleared" | "failed";
 
 export interface Position {
   row: number;
@@ -93,6 +94,7 @@ export interface PublicRoomState {
   totalRounds: number;
   currentRound: number;
   completedRounds: number;
+  roundResult: RoundResult | null;
   maze: Maze;
   playerPosition: Position;
   currentWindowId: string;

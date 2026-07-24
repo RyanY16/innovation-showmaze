@@ -261,7 +261,7 @@ async function applyHostEvent(
   let nextState = current;
   if (event.type === "HOST_START_GAME") nextState = startGame(nextState);
   if (event.type === "HOST_RESET_GAME") nextState = resetRun(nextState);
-  if (event.type === "HOST_END_ROUND") nextState = completeRound(nextState);
+  if (event.type === "HOST_END_ROUND") nextState = failRound(nextState);
   if (event.type === "HOST_END_GAME") nextState = finishGame(nextState, "ended");
   if (event.type === "HOST_SET_INPUT_BATCH") nextState = { ...nextState, inputBatchSize: Math.max(1, Math.min(25, Math.round(event.inputBatchSize))) };
   if (event.type === "HOST_NEW_MAZE") nextState = resetRun({ ...nextState, difficulty: event.difficulty });
@@ -298,6 +298,7 @@ function resetRun(state: PublicRoomState): PublicRoomState {
     totalRounds: roundDifficulties.length,
     currentRound: 1,
     completedRounds: 0,
+    roundResult: null,
     maze,
     playerPosition: maze.start,
     currentWindowId: "lobby",
@@ -334,22 +335,28 @@ function prepareNextRound(state: PublicRoomState): PublicRoomState {
     countdownEndsAt: null,
     roundEndsAt: null,
     selectedMove: null,
+    roundResult: null,
     history: []
   };
 }
 
-function completeRound(state: PublicRoomState): PublicRoomState {
+function completeRound(state: PublicRoomState, roundResult: "cleared" | "failed" = "cleared"): PublicRoomState {
   const completedRounds = Math.max(state.completedRounds, state.currentRound);
-  if (completedRounds >= state.totalRounds) return finishGame({ ...state, completedRounds }, "won");
+  if (completedRounds >= state.totalRounds) return finishGame({ ...state, completedRounds, roundResult }, roundResult === "cleared" ? "won" : "ended");
   return {
     ...state,
     status: "round_over",
     completedRounds,
+    roundResult,
     currentWindowId: "round-over",
     countdownEndsAt: null,
     roundEndsAt: null,
     selectedMove: null
   };
+}
+
+function failRound(state: PublicRoomState): PublicRoomState {
+  return completeRound(state, "failed");
 }
 
 function finishGame(state: PublicRoomState, reason: "won" | "ended"): PublicRoomState {
@@ -385,7 +392,7 @@ function updateRoundClock(state: PublicRoomState): PublicRoomState {
     };
   }
   if (state.status === "playing" && state.roundEndsAt && now >= state.roundEndsAt) {
-    return completeRound(state);
+    return failRound(state);
   }
   return state;
 }
@@ -416,7 +423,7 @@ function applyMove(state: PublicRoomState, input: SubmittedInput): PublicRoomSta
     return completeRound({
       ...nextState,
       players: nextState.players.map((player) => player.id === input.playerId ? { ...player, stats: recalculateStats({ ...player.stats, finalMoves: player.stats.finalMoves + 1 }) } : player)
-    });
+    }, "cleared");
   }
   return nextState;
 }

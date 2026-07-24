@@ -401,7 +401,7 @@ function processQueuedMove(room: Room) {
     const player = room.players.find((candidate) => candidate.id === move.playerId);
     if (player) player.stats = recalculateStats({ ...player.stats, finalMoves: player.stats.finalMoves + 1 });
     room.clutchPlayerId = move.playerId;
-    completeRound(room);
+    completeRound(room, "cleared");
     return;
   }
 
@@ -446,6 +446,7 @@ function resetRoom(room: Room) {
 function resetRun(room: Room, regenerateMaze: boolean) {
   room.currentRound = 1;
   room.completedRounds = 0;
+  room.roundResult = null;
   room.totalRounds = roundDifficulties.length;
   room.difficulty = difficultyForRound(room.currentRound);
   const maze = regenerateMaze ? createMaze(room.difficulty) : room.maze;
@@ -457,6 +458,7 @@ function resetRun(room: Room, regenerateMaze: boolean) {
   room.finishedReason = null;
   room.countdownEndsAt = null;
   room.roundEndsAt = null;
+  room.roundResult = null;
   room.currentWindowId = "lobby";
   room.windowStartedAt = 0;
   room.windowEndsAt = 0;
@@ -481,6 +483,7 @@ function prepareNextRound(room: Room) {
   const maze = createMaze(room.difficulty);
   room.maze = maze;
   room.playerPosition = maze.start;
+  room.roundResult = null;
   room.currentWindowId = "lobby";
   room.windowStartedAt = 0;
   room.windowEndsAt = 0;
@@ -493,10 +496,11 @@ function prepareNextRound(room: Room) {
   room.queuedInputPlayers.clear();
 }
 
-function completeRound(room: Room) {
+function completeRound(room: Room, roundResult: "cleared" | "failed" = "cleared") {
   room.completedRounds = Math.max(room.completedRounds, room.currentRound);
+  room.roundResult = roundResult;
   if (room.completedRounds >= room.totalRounds) {
-    finishGame(room, "won");
+    finishGame(room, roundResult === "cleared" ? "won" : "ended");
     return;
   }
 
@@ -519,7 +523,7 @@ function completeRound(room: Room) {
 
 function endRound(room: Room) {
   if (room.status !== "playing" && room.status !== "countdown") return;
-  completeRound(room);
+  completeRound(room, "failed");
 }
 
 function newMaze(room: Room, difficulty: Difficulty) {
@@ -594,6 +598,7 @@ function createRoom(hostId: string, difficulty: Difficulty = "easy", requestedRo
     totalRounds: roundDifficulties.length,
     currentRound: 1,
     completedRounds: 0,
+    roundResult: null,
     maze,
     playerPosition: maze.start,
     currentWindowId: "lobby",
@@ -685,6 +690,7 @@ function publicState(room: Room): PublicRoomState {
     totalRounds: room.totalRounds,
     currentRound: room.currentRound,
     completedRounds: room.completedRounds,
+    roundResult: room.roundResult,
     maze: room.maze,
     playerPosition: room.playerPosition,
     currentWindowId: room.currentWindowId,
