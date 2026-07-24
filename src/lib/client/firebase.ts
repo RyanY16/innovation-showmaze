@@ -134,8 +134,7 @@ async function firebaseWrite(method: "PUT" | "PATCH" | "POST" | "DELETE", path: 
 
 function firebaseUrl(path: string) {
   const trimmed = databaseUrl.replace(/\/$/, "");
-  const token = typeof window === "undefined" ? "" : window.localStorage.getItem("crowd-maze-firebase-token") || "";
-  return `${trimmed}/${path}.json${token ? `?auth=${encodeURIComponent(token)}` : ""}`;
+  return `${trimmed}/${path}.json`;
 }
 
 function makeRoomCode() {
