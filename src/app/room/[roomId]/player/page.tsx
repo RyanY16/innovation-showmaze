@@ -22,6 +22,12 @@ export default function PlayerPage() {
   const [roomMissing, setRoomMissing] = useState(false);
   const [submittedWindow, setSubmittedWindow] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("Enter name to join.");
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 150);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fallbackId = getOrCreateId("crowd-maze-player-id");
@@ -43,12 +49,13 @@ export default function PlayerPage() {
     setJoined(true);
     setJoining(false);
     setPendingJoinName("");
-    setFeedback(state?.status === "playing" ? "Joined. Choose a direction." : "Joined. Waiting for start.");
+    setFeedback(state?.status === "playing" ? "Joined. Choose a direction." : state?.status === "countdown" ? "Get ready." : "Joined. Waiting for start.");
   }, [playerId, state?.players, state?.status]);
 
   useEffect(() => {
     if (!state?.currentWindowId) return;
-    if (state.status === "playing" && state.currentWindowId !== submittedWindow) setFeedback("Window open. Choose a direction.");
+    if (state.status === "countdown") setFeedback("Get ready.");
+    else if (state.status === "playing" && state.currentWindowId !== submittedWindow) setFeedback("Window open. Choose a direction.");
     else if (state.status === "round_over") setFeedback(`Round ${state.completedRounds} cleared. Waiting for next round.`);
     else if (state.status === "finished") {
       if (state.finishedReason === "won") setFeedback(state.selectedMove ? `${state.selectedMove.displayName} reached the exit.` : "Maze cleared.");
@@ -188,7 +195,19 @@ export default function PlayerPage() {
           </form>
         ) : null}
 
-        {joined ? (
+        {joined && state?.status === "countdown" ? (
+          <section className="pixel-panel p-5 text-center">
+            <p className="hud-label">Get ready</p>
+            <p className="pixel-title mt-3 text-6xl text-gold">
+              {Math.max(1, Math.ceil(((state.countdownEndsAt ?? now) - now) / 1000))}
+            </p>
+            <button className="pixel-button mt-5 w-full bg-panel px-4 py-4" onClick={leave}>
+              Leave
+            </button>
+          </section>
+        ) : null}
+
+        {joined && state?.status !== "countdown" ? (
           <section className="pixel-panel p-5">
             <div className="mx-auto grid w-72 grid-cols-3 grid-rows-3 gap-2">
               <div />

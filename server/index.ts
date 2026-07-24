@@ -40,6 +40,8 @@ const rooms = new Map<string, Room>();
 const clients = new Map<WebSocket, ClientContext>();
 const port = Number(process.env.PORT ?? 8787);
 const roundDifficulties: Difficulty[] = ["easy", "medium", "hard"];
+const countdownDurationMs = 3000;
+const roundDurationMs = 30000;
 
 const httpServer = createServer((request, response) => {
   setCors(response);
@@ -324,19 +326,35 @@ function scheduleQueueProcessing(room: Room) {
 }
 
 function startGame(room: Room) {
-  if (room.status === "playing") return;
+  if (room.status === "playing" || room.status === "countdown") return;
   clearRoomTimer(room);
   clearQueueTimer(room);
   if (room.status === "finished") resetRun(room, true);
   if (room.status === "round_over") prepareNextRound(room);
-  room.status = "playing";
-  room.countdownEndsAt = null;
+  room.status = "countdown";
+  room.countdownEndsAt = Date.now() + countdownDurationMs;
+  room.roundEndsAt = null;
   room.startedAt = null;
   room.finishedAt = null;
   room.finishedReason = null;
   room.results = null;
+  room.currentWindowId = "countdown";
+  room.windowStartedAt = Date.now();
+  room.windowEndsAt = 0;
+  room.selectedMove = null;
+  broadcast(room);
+  persist(room);
+  room.timer = setTimeout(() => beginTimedRound(room), countdownDurationMs);
+}
+
+function beginTimedRound(room: Room) {
+  if (room.status !== "countdown") return;
+  room.status = "playing";
+  room.countdownEndsAt = null;
   room.startedAt = Date.now();
+  room.roundEndsAt = room.startedAt + roundDurationMs;
   openWindow(room);
+  room.timer = setTimeout(() => endRound(room), roundDurationMs);
 }
 
 function openWindow(room: Room) {
@@ -349,7 +367,6 @@ function openWindow(room: Room) {
   room.nextMoveAvailableAt = 0;
   room.selectedMove = null;
   broadcast(room, { type: "WINDOW_OPENED", windowId: room.currentWindowId, endsAt: room.windowEndsAt });
-  clearRoomTimer(room);
 }
 
 function processQueuedMove(room: Room) {
@@ -439,9 +456,12 @@ function resetRun(room: Room, regenerateMaze: boolean) {
   room.finishedAt = null;
   room.finishedReason = null;
   room.countdownEndsAt = null;
+  room.roundEndsAt = null;
   room.currentWindowId = "lobby";
   room.windowStartedAt = 0;
   room.windowEndsAt = 0;
+  room.countdownEndsAt = null;
+  room.roundEndsAt = null;
   room.nextMoveAvailableAt = 0;
   room.selectedMove = null;
   room.history = [];
@@ -486,6 +506,8 @@ function completeRound(room: Room) {
   room.currentWindowId = "round-over";
   room.windowStartedAt = 0;
   room.windowEndsAt = 0;
+  room.countdownEndsAt = null;
+  room.roundEndsAt = null;
   room.nextMoveAvailableAt = 0;
   room.inputs.clear();
   room.inputPlayers.clear();
@@ -496,7 +518,7 @@ function completeRound(room: Room) {
 }
 
 function endRound(room: Room) {
-  if (room.status !== "playing") return;
+  if (room.status !== "playing" && room.status !== "countdown") return;
   completeRound(room);
 }
 
@@ -536,6 +558,8 @@ function finishGame(room: Room, reason: "won" | "ended") {
   room.currentWindowId = "finished";
   room.windowStartedAt = 0;
   room.windowEndsAt = 0;
+  room.countdownEndsAt = null;
+  room.roundEndsAt = null;
   room.nextMoveAvailableAt = 0;
   room.inputs.clear();
   room.inputPlayers.clear();
@@ -583,6 +607,7 @@ function createRoom(hostId: string, difficulty: Difficulty = "easy", requestedRo
     finishedAt: null,
     finishedReason: null,
     countdownEndsAt: null,
+    roundEndsAt: null,
     results: null,
     inputs: new Map(),
     inputPlayers: new Set(),
@@ -673,6 +698,7 @@ function publicState(room: Room): PublicRoomState {
     finishedAt: room.finishedAt,
     finishedReason: room.finishedReason,
     countdownEndsAt: room.countdownEndsAt,
+    roundEndsAt: room.roundEndsAt,
     results: room.results
   };
 }

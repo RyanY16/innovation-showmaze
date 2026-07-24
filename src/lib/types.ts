@@ -106,6 +106,7 @@ export interface PublicRoomState {
   finishedAt: number | null;
   finishedReason: FinishedReason | null;
   countdownEndsAt: number | null;
+  roundEndsAt: number | null;
   results: GameResults | null;
 }
 

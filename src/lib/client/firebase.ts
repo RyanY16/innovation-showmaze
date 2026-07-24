@@ -121,6 +121,7 @@ function createInitialRoomState(roomId: string, roomCode: string, hostId: string
     finishedAt: null,
     finishedReason: null,
     countdownEndsAt: null,
+    roundEndsAt: null,
     results: null
   };
 }
@@ -129,6 +130,8 @@ function normalizeRoomState(state: PublicRoomState): PublicRoomState {
   return {
     ...state,
     stateVersion: typeof state.stateVersion === "number" ? state.stateVersion : 0,
+    countdownEndsAt: typeof state.countdownEndsAt === "number" ? state.countdownEndsAt : null,
+    roundEndsAt: typeof state.roundEndsAt === "number" ? state.roundEndsAt : null,
     players: Array.isArray(state.players) ? state.players : [],
     history: Array.isArray(state.history) ? state.history : [],
     connectedPlayerCount: Array.isArray(state.players) ? state.players.filter((player) => player.connected).length : 0,

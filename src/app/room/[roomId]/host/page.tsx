@@ -34,9 +34,12 @@ export default function HostPage() {
   const joinUrl = typeof window === "undefined" || !state ? "" : `${getPublicAppOrigin()}/room/${state.roomId}/player`;
   const hostReady = status === "connected" && Boolean(state);
   const isRunning = state?.status === "playing";
+  const isCountdown = state?.status === "countdown";
   const isFinished = state?.status === "finished";
   const isInitialLobby = state?.status === "lobby" && (state.completedRounds ?? 0) === 0;
-  const isBetweenRounds = Boolean(state) && !isRunning && !isFinished && !isInitialLobby;
+  const isBetweenRounds = Boolean(state) && !isRunning && !isCountdown && !isFinished && !isInitialLobby;
+  const timeLeft = useTimeLeft(state?.roundEndsAt ?? null);
+  const countdownLeft = useTimeLeft(state?.countdownEndsAt ?? null);
   const nextRound = isBetweenRounds ? (state?.completedRounds ?? 0) + 1 : state?.currentRound ?? 1;
   const nextDifficulty = roundDifficulty(nextRound);
   const primaryLabel = isRunning ? "End" : `Start Round ${nextRound}`;
@@ -116,8 +119,18 @@ export default function HostPage() {
     <main className="min-h-screen bg-ink p-4 text-bone md:p-6">
       <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-[1fr_360px]">
         <section className="pixel-panel relative h-[calc(100vh-2rem)] min-h-[520px] p-3 md:h-[calc(100vh-3rem)]">
-          {state && isRunning ? (
-            <MazeCanvas maze={state.maze} position={state.playerPosition} />
+          {state && (isRunning || isCountdown) ? (
+            <div className="relative h-full">
+              <MazeCanvas maze={state.maze} position={state.playerPosition} />
+              {isCountdown ? (
+                <div className="absolute inset-0 grid place-items-center bg-ink/80 text-center">
+                  <div>
+                    <p className="hud-label">Round {state.currentRound}</p>
+                    <h2 className="pixel-title mt-3 text-8xl text-gold">{Math.max(1, Math.ceil(countdownLeft / 1000))}</h2>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           ) : state && isFinished ? (
             <div className="grid min-h-[500px] content-start gap-5 p-5">
               <div>
@@ -173,11 +186,13 @@ export default function HostPage() {
           {state && isRunning ? <MoveBanner move={state.selectedMove} history={state.history} /> : null}
 
           <div className="pixel-panel p-4">
-            <p className="hud-label">{isRunning ? "Game menu" : "Lobby menu"}</p>
+            <p className="hud-label">{isRunning || isCountdown ? "Game menu" : "Lobby menu"}</p>
             <h1 className="pixel-title mt-1 text-3xl text-cyan">Room {state?.roomCode ?? "..."}</h1>
             <p className="mt-1 font-mono text-sm text-mint">
               Round {state?.currentRound ?? 1} / {state?.totalRounds ?? 3} · {(state?.difficulty ?? "easy").toUpperCase()}
             </p>
+            {isRunning ? <p className="pixel-title mt-3 text-4xl text-gold">{formatClock(timeLeft)}</p> : null}
+            {isCountdown ? <p className="pixel-title mt-3 text-4xl text-gold">Starts {Math.max(1, Math.ceil(countdownLeft / 1000))}</p> : null}
             <p className="mt-2 text-sm text-bone/70">Socket: {status}{error ? ` / ${error}` : ""}</p>
             {state?.status === "finished" ? (
               <p className={`mt-3 border-[4px] border-cyan px-3 py-2 text-sm font-black ${state.finishedReason === "won" ? "bg-mint text-ink" : "bg-coral text-ink"}`}>
@@ -198,7 +213,7 @@ export default function HostPage() {
                   End
                 </button>
               </div>
-            ) : isRunning ? (
+            ) : isRunning || isCountdown ? (
               <div className="mt-4 grid gap-3">
                 <button className="pixel-button px-3 py-3" disabled={!hostReady} onClick={() => sendHost({ type: "HOST_END_ROUND" }, "Round ended.")}>
                   End Round
@@ -277,4 +292,18 @@ function roundDifficulty(round: number) {
   if (round >= 3) return "Hard";
   if (round === 2) return "Medium";
   return "Easy";
+}
+
+function useTimeLeft(endsAt: number | null) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!endsAt) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 150);
+    return () => window.clearInterval(interval);
+  }, [endsAt]);
+  return endsAt ? Math.max(0, endsAt - now) : 0;
+}
+
+function formatClock(ms: number) {
+  return `${Math.ceil(ms / 1000)}s`;
 }

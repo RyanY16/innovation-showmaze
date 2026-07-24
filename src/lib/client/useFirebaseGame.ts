@@ -22,6 +22,8 @@ type JoinRecord = {
 type InputRecord = SubmittedInput;
 
 const roundDifficulties = ["easy", "medium", "hard"] as const;
+const countdownDurationMs = 3000;
+const roundDurationMs = 30000;
 
 export function useFirebaseGame() {
   const [state, setState] = useState<PublicRoomState | null>(null);
@@ -204,6 +206,11 @@ export function useFirebaseGame() {
 async function processHostQueues(current: PublicRoomState, publishState: (state: PublicRoomState, event?: ServerEvent) => Promise<void>) {
   let nextState = { ...current, players: [...current.players], history: [...current.history] };
   const roomId = nextState.roomId;
+  const timedState = updateRoundClock(nextState);
+  if (timedState !== nextState) {
+    await publishState(timedState, { type: "ROOM_STATE", state: timedState });
+    return;
+  }
   const shouldReadJoins = nextState.status !== "playing";
   const shouldReadInputs = nextState.status === "playing";
   const [joins, leaves, inputs] = await Promise.all([
@@ -263,15 +270,18 @@ async function applyHostEvent(
 
 function startGame(state: PublicRoomState): PublicRoomState {
   const base = state.status === "round_over" ? prepareNextRound(state) : state.status === "finished" ? resetRun(state) : state;
+  const now = Date.now();
   return {
     ...base,
-    status: "playing",
-    startedAt: Date.now(),
+    status: "countdown",
+    startedAt: null,
     finishedAt: null,
     finishedReason: null,
     results: null,
-    currentWindowId: makeClientId(),
-    windowStartedAt: Date.now(),
+    countdownEndsAt: now + countdownDurationMs,
+    roundEndsAt: null,
+    currentWindowId: "countdown",
+    windowStartedAt: now,
     windowEndsAt: 0,
     nextMoveAvailableAt: 0,
     selectedMove: null
@@ -299,6 +309,8 @@ function resetRun(state: PublicRoomState): PublicRoomState {
     startedAt: null,
     finishedAt: null,
     finishedReason: null,
+    countdownEndsAt: null,
+    roundEndsAt: null,
     results: null,
     players: state.players.map((player) => ({ ...player, stats: emptyStats() }))
   };
@@ -319,6 +331,8 @@ function prepareNextRound(state: PublicRoomState): PublicRoomState {
     currentWindowId: "round-over",
     windowStartedAt: 0,
     windowEndsAt: 0,
+    countdownEndsAt: null,
+    roundEndsAt: null,
     selectedMove: null,
     history: []
   };
@@ -332,6 +346,8 @@ function completeRound(state: PublicRoomState): PublicRoomState {
     status: "round_over",
     completedRounds,
     currentWindowId: "round-over",
+    countdownEndsAt: null,
+    roundEndsAt: null,
     selectedMove: null
   };
 }
@@ -343,12 +359,35 @@ function finishGame(state: PublicRoomState, reason: "won" | "ended"): PublicRoom
     finishedAt: Date.now(),
     finishedReason: reason,
     currentWindowId: "finished",
+    countdownEndsAt: null,
+    roundEndsAt: null,
     selectedMove: null,
     results: {
       leaderboard: leaderboard(state.players),
       awards: calculateAwards(state.players, null)
     }
   };
+}
+
+function updateRoundClock(state: PublicRoomState): PublicRoomState {
+  const now = Date.now();
+  if (state.status === "countdown" && state.countdownEndsAt && now >= state.countdownEndsAt) {
+    return {
+      ...state,
+      status: "playing",
+      startedAt: now,
+      countdownEndsAt: null,
+      roundEndsAt: now + roundDurationMs,
+      currentWindowId: makeClientId(),
+      windowStartedAt: now,
+      windowEndsAt: 0,
+      selectedMove: null
+    };
+  }
+  if (state.status === "playing" && state.roundEndsAt && now >= state.roundEndsAt) {
+    return completeRound(state);
+  }
+  return state;
 }
 
 function applyMove(state: PublicRoomState, input: SubmittedInput): PublicRoomState {

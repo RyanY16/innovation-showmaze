@@ -17,19 +17,35 @@ export default function DisplayPage() {
     if (status === "connected") send({ type: "WATCH_ROOM", roomId });
   }, [roomId, send, status]);
 
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 150);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const joinUrl = typeof window === "undefined" || !state ? "" : `${getPublicAppOrigin()}/room/${state.roomId}/player`;
   const timer = useMemo(() => {
-    if (!state?.startedAt) return "00:00";
-    const end = state.finishedAt ?? Date.now();
-    const seconds = Math.max(0, Math.floor((end - state.startedAt) / 1000));
+    if (state?.status === "countdown" && state.countdownEndsAt) return `${Math.max(1, Math.ceil((state.countdownEndsAt - now) / 1000))}`;
+    if (state?.status === "playing" && state.roundEndsAt) return `${Math.max(0, Math.ceil((state.roundEndsAt - now) / 1000))}s`;
+    if (!state?.startedAt) return "30s";
+    const end = state.finishedAt ?? state.roundEndsAt ?? now;
+    const seconds = Math.max(0, Math.ceil((end - state.startedAt) / 1000));
     return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-  }, [state]);
+  }, [now, state]);
 
   return (
     <main className="min-h-screen bg-ink p-4 text-bone">
       <div className="grid min-h-[calc(100vh-2rem)] gap-4 xl:grid-cols-[1fr_340px]">
         <section className="pixel-panel relative p-3">
           {state ? <MazeCanvas maze={state.maze} position={state.playerPosition} /> : <div className="p-8">Waiting for room...</div>}
+          {state?.status === "countdown" ? (
+            <div className="absolute inset-0 grid place-items-center bg-ink/85 p-8 text-center">
+              <div>
+                <p className="hud-label">Round {state.currentRound}</p>
+                <h1 className="pixel-title mt-2 text-8xl text-gold">{Math.max(1, Math.ceil(((state.countdownEndsAt ?? now) - now) / 1000))}</h1>
+              </div>
+            </div>
+          ) : null}
           {state?.status === "round_over" ? (
             <div className="absolute inset-0 grid place-items-center bg-ink/85 p-8 text-center">
               <div>
