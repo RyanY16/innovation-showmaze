@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { gameHttpUrl, getOrCreateId } from "@/lib/client/config";
 import { createFirebaseRoom, getAnonymousPlayerId, isFirebaseConfigured } from "@/lib/client/firebase";
@@ -47,10 +47,8 @@ export default function LandingPage() {
     <main className="min-h-screen bg-ink px-5 py-8 text-bone">
       <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 md:grid-cols-[1.05fr_0.95fr]">
         <div>
-          <p className="hud-label mb-3 text-[#34a853]">GDG innovation demo</p>
           <h1 className="pixel-title text-5xl leading-tight md:text-7xl">
-            <span className="text-[#4285f4]">Innovation</span>{" "}
-            <span className="text-[#fbbc04]">Show</span><span className="text-[#ea4335]">maze</span>
+            <AlternatingTitle text="Innovation Showmaze" />
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-bone/80">
             One shared cursor, one maze, and a room full of phones steering the demo together.
@@ -98,31 +96,68 @@ const mazeCells = [
 ];
 
 function PlaceholderMaze() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const tile = 16;
+    const width = mazeCells[0].length * tile;
+    const height = mazeCells.length * tile;
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = "100%";
+    canvas.style.height = "auto";
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.imageSmoothingEnabled = false;
+    context.fillStyle = "#050816";
+    context.fillRect(0, 0, width, height);
+
+    for (let row = 0; row < mazeCells.length; row += 1) {
+      for (let column = 0; column < mazeCells[row].length; column += 1) {
+        const cell = mazeCells[row][column];
+        const x = column * tile;
+        const y = row * tile;
+        context.fillStyle = (row + column) % 2 ? "#09122a" : "#0b1735";
+        context.fillRect(x + 1, y + 1, tile - 2, tile - 2);
+        if (cell === "#") {
+          context.fillStyle = "#2f6bff";
+          context.fillRect(x, y, tile, tile);
+          context.fillStyle = "#33c7ff";
+          context.fillRect(x + 3, y + 3, tile - 6, tile - 6);
+        }
+        if (cell === "S") {
+          context.fillStyle = "#ffd84a";
+          context.fillRect(x + 4, y + 4, tile - 8, tile - 8);
+        }
+        if (cell === "E") {
+          context.fillStyle = "#34d399";
+          context.fillRect(x + 4, y + 4, tile - 8, tile - 8);
+        }
+      }
+    }
+  }, []);
+
   return (
-    <div className="mt-6 border-[4px] border-[#ea4335] bg-ink p-3 shadow-pixel">
-      <div className="grid gap-[3px]" style={{ gridTemplateColumns: `repeat(${mazeCells[0].length}, minmax(0, 1fr))` }}>
-        {mazeCells.flatMap((row, rowIndex) =>
-          [...row].map((cell, columnIndex) => {
-            const color =
-              cell === "#"
-                ? "bg-[#4285f4]"
-                : cell === "S"
-                  ? "bg-[#fbbc04]"
-                  : cell === "E"
-                    ? "bg-[#34a853]"
-                    : (rowIndex + columnIndex) % 7 === 0
-                      ? "bg-[#ea4335]"
-                      : "bg-[#111827]";
-            return <span key={`${rowIndex}-${columnIndex}`} className={`aspect-square border border-ink ${color}`} />;
-          })
-        )}
-      </div>
-      <div className="mt-3 grid grid-cols-4 gap-2">
-        <span className="h-2 bg-[#4285f4]" />
-        <span className="h-2 bg-[#ea4335]" />
-        <span className="h-2 bg-[#fbbc04]" />
-        <span className="h-2 bg-[#34a853]" />
-      </div>
+    <div className="mt-6 border-[4px] border-[#4285f4] bg-ink p-3 shadow-pixel">
+      <canvas ref={canvasRef} className="block w-full [image-rendering:pixelated]" aria-label="Maze preview" />
     </div>
+  );
+}
+
+function AlternatingTitle({ text }: { text: string }) {
+  const colors = ["#4285f4", "#ea4335", "#fbbc04", "#34a853"];
+  let colorIndex = 0;
+  return (
+    <>
+      {[...text].map((character, index) => {
+        if (character === " ") return <span key={index}> </span>;
+        const color = colors[colorIndex % colors.length];
+        colorIndex += 1;
+        return <span key={index} style={{ color }}>{character}</span>;
+      })}
+    </>
   );
 }
