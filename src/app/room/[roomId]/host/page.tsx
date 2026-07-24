@@ -36,8 +36,7 @@ export default function HostPage() {
   const isRunning = state?.status === "playing";
   const isFinished = state?.status === "finished";
   const isInitialLobby = state?.status === "lobby" && (state.completedRounds ?? 0) === 0;
-  const isBetweenRounds = !isRunning && !isFinished && !isInitialLobby;
-  const isLobby = !isRunning && !isFinished;
+  const isBetweenRounds = Boolean(state) && !isRunning && !isFinished && !isInitialLobby;
   const nextRound = isBetweenRounds ? (state?.completedRounds ?? 0) + 1 : state?.currentRound ?? 1;
   const nextDifficulty = roundDifficulty(nextRound);
   const primaryLabel = isRunning ? "End" : `Start Round ${nextRound}`;
@@ -53,6 +52,19 @@ export default function HostPage() {
     if (isRunning) send({ type: "HOST_END_GAME" });
     router.push("/");
   };
+
+  if (!state) {
+    return (
+      <main className="min-h-screen bg-ink p-4 text-bone md:p-6">
+        <section className="pixel-panel mx-auto grid min-h-[360px] max-w-5xl place-items-center p-6 text-center">
+          <div>
+            <p className="hud-label">Loading</p>
+            <h1 className="pixel-title mt-3 text-4xl text-cyan">Opening Room</h1>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   if (isInitialLobby) {
     return (

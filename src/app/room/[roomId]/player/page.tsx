@@ -180,8 +180,8 @@ export default function PlayerPage() {
                   className="mt-2 w-full border-[4px] border-cyan bg-bone px-4 py-4 text-xl font-black text-ink outline-none placeholder:text-ink/45"
                   placeholder="GDG Navigator"
                 />
-                <button className="pixel-button mt-4 w-full px-4 py-4">
-                  {joining ? "Retry Join" : "Join Room"}
+                <button className="pixel-button mt-4 w-full px-4 py-4" disabled={joining}>
+                  Join Room
                 </button>
               </>
             )}

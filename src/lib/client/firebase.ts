@@ -96,6 +96,7 @@ function createInitialRoomState(roomId: string, roomCode: string, hostId: string
     roomId,
     roomCode,
     hostId,
+    stateVersion: 0,
     status: "lobby",
     difficulty,
     selectionMode: "random",
@@ -127,6 +128,7 @@ function createInitialRoomState(roomId: string, roomCode: string, hostId: string
 function normalizeRoomState(state: PublicRoomState): PublicRoomState {
   return {
     ...state,
+    stateVersion: typeof state.stateVersion === "number" ? state.stateVersion : 0,
     players: Array.isArray(state.players) ? state.players : [],
     history: Array.isArray(state.history) ? state.history : [],
     connectedPlayerCount: Array.isArray(state.players) ? state.players.filter((player) => player.connected).length : 0,

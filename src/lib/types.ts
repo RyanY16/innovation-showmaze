@@ -81,6 +81,7 @@ export interface PublicRoomState {
   roomId: string;
   roomCode: string;
   hostId: string;
+  stateVersion: number;
   status: RoomStatus;
   difficulty: Difficulty;
   selectionMode: SelectionMode;

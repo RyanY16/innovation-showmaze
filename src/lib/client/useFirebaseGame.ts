@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { makeClientId } from "@/lib/client/config";
 import {
   ensureFirebaseIdentity,
@@ -35,10 +35,14 @@ export function useFirebaseGame() {
   const processingRef = useRef(false);
 
   const publishState = useCallback(async (nextState: PublicRoomState, event?: ServerEvent) => {
-    stateRef.current = nextState;
-    setState(nextState);
-    if (event) setLastEvent(event);
-    await firebasePut(`rooms/${nextState.roomId}/state`, nextState);
+    const versionedState = {
+      ...nextState,
+      stateVersion: (stateRef.current?.stateVersion ?? nextState.stateVersion ?? 0) + 1
+    };
+    stateRef.current = versionedState;
+    setState(versionedState);
+    if (event) setLastEvent(event.type === "ROOM_STATE" ? { type: "ROOM_STATE", state: versionedState } : event);
+    await firebasePut(`rooms/${versionedState.roomId}/state`, versionedState);
   }, []);
 
   useEffect(() => {
@@ -69,9 +73,7 @@ export function useFirebaseGame() {
           setError("Room not found.");
           return;
         }
-        stateRef.current = nextState;
-        setState(nextState);
-        setLastEvent({ type: "ROOM_STATE", state: nextState });
+        applyRemoteState(nextState, stateRef, setState, setLastEvent);
         setError(null);
       } catch {
         setError("Firebase state sync failed.");
@@ -111,9 +113,7 @@ export function useFirebaseGame() {
         roomIdRef.current = resolved;
         const nextState = await firebaseGet<PublicRoomState>(`rooms/${resolved}/state`);
         if (nextState) {
-          stateRef.current = nextState;
-          setState(nextState);
-          setLastEvent({ type: "ROOM_STATE", state: nextState });
+          applyRemoteState(nextState, stateRef, setState, setLastEvent);
         }
       };
       watchRoom().catch(() => setError("Room not found."));
@@ -133,9 +133,7 @@ export function useFirebaseGame() {
         roomIdRef.current = resolved;
         const nextState = await firebaseGet<PublicRoomState>(`rooms/${resolved}/state`);
         if (!nextState) throw new Error("Room not found.");
-        stateRef.current = nextState;
-        setState(nextState);
-        setLastEvent({ type: "ROOM_STATE", state: nextState });
+        applyRemoteState(nextState, stateRef, setState, setLastEvent);
       };
       connectHost().catch(() => setError("Room not found."));
       return true;
@@ -158,8 +156,7 @@ export function useFirebaseGame() {
         } satisfies JoinRecord);
         const nextState = await firebaseGet<PublicRoomState>(`rooms/${resolved}/state`);
         if (nextState) {
-          setState(nextState);
-          setLastEvent({ type: "ROOM_STATE", state: nextState });
+          applyRemoteState(nextState, stateRef, setState, setLastEvent);
         }
       };
       joinRoom().catch(() => setError("Could not join room."));
@@ -421,4 +418,17 @@ function difficultyForRound(round: number) {
 function sanitizeName(name: string) {
   const cleaned = name.replace(/[^A-Za-z0-9_. -]/g, "").trim().slice(0, 18);
   return cleaned || "Player";
+}
+
+function applyRemoteState(
+  remote: PublicRoomState,
+  stateRef: MutableRefObject<PublicRoomState | null>,
+  setState: (state: PublicRoomState | null) => void,
+  setLastEvent: (event: ServerEvent) => void
+) {
+  const current = stateRef.current;
+  if (current?.roomId === remote.roomId && (remote.stateVersion ?? 0) < (current.stateVersion ?? 0)) return;
+  stateRef.current = remote;
+  setState(remote);
+  setLastEvent({ type: "ROOM_STATE", state: remote });
 }
