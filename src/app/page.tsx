@@ -66,7 +66,7 @@ export default function LandingPage() {
           </label>
           <input
             id="roomCode"
-            className="mt-2 w-full border-[4px] border-cyan bg-bone px-4 py-4 font-mono text-3xl font-black uppercase text-bone outline-none"
+            className="mt-2 w-full border-[4px] border-cyan bg-bone px-4 py-4 font-mono text-3xl font-black uppercase text-ink outline-none placeholder:text-ink/45"
             value={roomCode}
             onChange={(event) => setRoomCode(event.target.value)}
             maxLength={36}
