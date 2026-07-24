@@ -15,9 +15,15 @@ const delta: Record<Direction, Position> = {
 };
 
 export const difficultySettings: Record<Difficulty, { rows: number; columns: number; window: number }> = {
-  easy: { rows: 9, columns: 13, window: 100 },
-  medium: { rows: 13, columns: 19, window: 100 },
-  hard: { rows: 15, columns: 23, window: 100 }
+  easy: { rows: 11, columns: 15, window: 100 },
+  medium: { rows: 15, columns: 21, window: 100 },
+  hard: { rows: 17, columns: 25, window: 100 }
+};
+
+const straightBias: Record<Difficulty, number> = {
+  easy: 0.78,
+  medium: 0.65,
+  hard: 0.55
 };
 
 export function createMaze(difficulty: Difficulty = "easy"): Maze {
@@ -26,13 +32,13 @@ export function createMaze(difficulty: Difficulty = "easy"): Maze {
     Array.from({ length: columns }, (): MazeCell => ({ top: true, right: true, bottom: true, left: true }))
   );
   const visited = Array.from({ length: rows }, () => Array.from({ length: columns }, () => false));
-  const stack: Position[] = [{ row: 0, column: 0 }];
+  const stack: Array<{ position: Position; direction: Direction | null }> = [{ position: { row: 0, column: 0 }, direction: null }];
   visited[0][0] = true;
 
   while (stack.length) {
     const current = stack[stack.length - 1];
-    const neighbors = shuffledDirections()
-      .map((direction) => ({ direction, next: add(current, delta[direction]) }))
+    const neighbors = shuffledDirections(current.direction, straightBias[difficulty])
+      .map((direction) => ({ direction, next: add(current.position, delta[direction]) }))
       .filter(({ next }) => inBounds(next, rows, columns) && !visited[next.row][next.column]);
 
     if (!neighbors.length) {
@@ -41,14 +47,15 @@ export function createMaze(difficulty: Difficulty = "easy"): Maze {
     }
 
     const { direction, next } = neighbors[0];
-    grid[current.row][current.column][directionToWall(direction)] = false;
+    grid[current.position.row][current.position.column][directionToWall(direction)] = false;
     grid[next.row][next.column][directionToWall(opposite[direction])] = false;
     visited[next.row][next.column] = true;
-    stack.push(next);
+    stack.push({ position: next, direction });
   }
 
   const start = { row: 0, column: 0 };
   const exit = { row: rows - 1, column: columns - 1 };
+  carveCrowdFriendlyRoute(grid, difficulty);
   return { grid, rows, columns, start, exit, distanceToExit: buildDistanceMap(grid, exit) };
 }
 
@@ -108,11 +115,72 @@ function inBounds(position: Position, rows: number, columns: number) {
   return position.row >= 0 && position.column >= 0 && position.row < rows && position.column < columns;
 }
 
-function shuffledDirections(): Direction[] {
+function shuffledDirections(preferred: Direction | null, bias: number): Direction[] {
   const directions: Direction[] = ["up", "right", "down", "left"];
   for (let index = directions.length - 1; index > 0; index -= 1) {
     const swap = Math.floor(Math.random() * (index + 1));
     [directions[index], directions[swap]] = [directions[swap], directions[index]];
   }
+  if (preferred && Math.random() < bias) {
+    const index = directions.indexOf(preferred);
+    if (index > 0) [directions[0], directions[index]] = [directions[index], directions[0]];
+  }
   return directions;
+}
+
+function carveCrowdFriendlyRoute(grid: MazeCell[][], difficulty: Difficulty) {
+  const rows = grid.length;
+  const columns = grid[0].length;
+  const waypoints = routeWaypoints(difficulty, rows, columns);
+  for (let index = 0; index < waypoints.length - 1; index += 1) {
+    carveSegment(grid, waypoints[index], waypoints[index + 1]);
+  }
+}
+
+function routeWaypoints(difficulty: Difficulty, rows: number, columns: number): Position[] {
+  const lastRow = rows - 1;
+  const lastColumn = columns - 1;
+  if (difficulty === "easy") {
+    return [
+      { row: 0, column: 0 },
+      { row: 0, column: lastColumn },
+      { row: lastRow, column: lastColumn }
+    ];
+  }
+  if (difficulty === "medium") {
+    const middleRow = Math.floor(rows * 0.5);
+    const nearEndColumn = Math.max(2, columns - 3);
+    return [
+      { row: 0, column: 0 },
+      { row: 0, column: nearEndColumn },
+      { row: middleRow, column: nearEndColumn },
+      { row: middleRow, column: 2 },
+      { row: lastRow, column: 2 },
+      { row: lastRow, column: lastColumn }
+    ];
+  }
+  const upperRow = Math.floor(rows * 0.28);
+  const lowerRow = Math.floor(rows * 0.68);
+  const nearEndColumn = Math.max(3, columns - 4);
+  return [
+    { row: 0, column: 0 },
+    { row: 0, column: nearEndColumn },
+    { row: upperRow, column: nearEndColumn },
+    { row: upperRow, column: 3 },
+    { row: lowerRow, column: 3 },
+    { row: lowerRow, column: nearEndColumn },
+    { row: lastRow, column: nearEndColumn },
+    { row: lastRow, column: lastColumn }
+  ];
+}
+
+function carveSegment(grid: MazeCell[][], start: Position, end: Position) {
+  let current = start;
+  while (current.row !== end.row || current.column !== end.column) {
+    const direction = current.column < end.column ? "right" : current.column > end.column ? "left" : current.row < end.row ? "down" : "up";
+    const next = add(current, delta[direction]);
+    grid[current.row][current.column][directionToWall(direction)] = false;
+    grid[next.row][next.column][directionToWall(opposite[direction])] = false;
+    current = next;
+  }
 }
