@@ -6,7 +6,6 @@ import {
   ensureFirebaseIdentity,
   firebaseDelete,
   firebaseGet,
-  firebasePatch,
   firebasePost,
   firebasePut,
   resolveFirebaseRoomId
@@ -59,7 +58,7 @@ export function useFirebaseGame() {
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(async () => {
+    const pollState = async () => {
       const roomId = roomIdRef.current;
       if (!roomId) return;
       try {
@@ -77,7 +76,8 @@ export function useFirebaseGame() {
       } catch {
         setError("Firebase state sync failed.");
       }
-    }, 500);
+    };
+    const interval = window.setInterval(pollState, 250);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -94,7 +94,7 @@ export function useFirebaseGame() {
       } finally {
         processingRef.current = false;
       }
-    }, 100);
+    }, 60);
     return () => window.clearInterval(interval);
   }, [publishState]);
 
@@ -207,28 +207,34 @@ export function useFirebaseGame() {
 async function processHostQueues(current: PublicRoomState, publishState: (state: PublicRoomState, event?: ServerEvent) => Promise<void>) {
   let nextState = { ...current, players: [...current.players], history: [...current.history] };
   const roomId = nextState.roomId;
-  const joins = (await firebaseGet<Record<string, JoinRecord>>(`rooms/${roomId}/joins`).catch(() => null)) || {};
-  const leaves = (await firebaseGet<Record<string, number>>(`rooms/${roomId}/leaves`).catch(() => null)) || {};
-  const inputs = (await firebaseGet<Record<string, InputRecord>>(`rooms/${roomId}/inputs`).catch(() => null)) || {};
+  const shouldReadJoins = nextState.status !== "playing";
+  const shouldReadInputs = nextState.status === "playing";
+  const [joins, leaves, inputs] = await Promise.all([
+    shouldReadJoins ? firebaseGet<Record<string, JoinRecord>>(`rooms/${roomId}/joins`).catch(() => null) : Promise.resolve(null),
+    firebaseGet<Record<string, number>>(`rooms/${roomId}/leaves`).catch(() => null),
+    shouldReadInputs ? firebaseGet<Record<string, InputRecord>>(`rooms/${roomId}/inputs`).catch(() => null) : Promise.resolve(null)
+  ]);
   let changed = false;
 
-  for (const [playerId, join] of Object.entries(joins)) {
+  for (const [playerId, join] of Object.entries(joins || {})) {
     nextState = upsertPlayer(nextState, playerId, join.displayName, join.joinedAt);
     await firebaseDelete(`rooms/${roomId}/joins/${playerId}`).catch(() => undefined);
     changed = true;
   }
 
-  for (const playerId of Object.keys(leaves)) {
+  for (const playerId of Object.keys(leaves || {})) {
     nextState = {
       ...nextState,
       players: nextState.players.map((player) => player.id === playerId ? { ...player, connected: false } : player)
     };
-    await firebaseDelete(`rooms/${roomId}/joins/${playerId}`).catch(() => undefined);
-    await firebaseDelete(`rooms/${roomId}/leaves/${playerId}`).catch(() => undefined);
+    await Promise.all([
+      firebaseDelete(`rooms/${roomId}/joins/${playerId}`).catch(() => undefined),
+      firebaseDelete(`rooms/${roomId}/leaves/${playerId}`).catch(() => undefined)
+    ]);
     changed = true;
   }
 
-  const sortedInputs = Object.entries(inputs).sort((a, b) => a[1].receivedAt - b[1].receivedAt);
+  const sortedInputs = Object.entries(inputs || {}).sort((a, b) => a[1].receivedAt - b[1].receivedAt);
   if (sortedInputs.length) nextState = markSubmitted(nextState, sortedInputs.map(([, input]) => input));
 
   for (const [inputId, input] of sortedInputs) {
@@ -236,8 +242,8 @@ async function processHostQueues(current: PublicRoomState, publishState: (state:
       nextState = applyMove(nextState, input);
       changed = true;
     }
-    await firebaseDelete(`rooms/${roomId}/inputs/${inputId}`).catch(() => undefined);
   }
+  await Promise.all(sortedInputs.map(([inputId]) => firebaseDelete(`rooms/${roomId}/inputs/${inputId}`).catch(() => undefined)));
 
   nextState = { ...nextState, pendingInputCount: 0, connectedPlayerCount: nextState.players.filter((player) => player.connected).length };
   if (changed) await publishState(nextState, { type: "ROOM_STATE", state: nextState });

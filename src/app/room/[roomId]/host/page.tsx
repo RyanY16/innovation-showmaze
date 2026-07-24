@@ -103,7 +103,7 @@ export default function HostPage() {
   return (
     <main className="min-h-screen bg-ink p-4 text-bone md:p-6">
       <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-[1fr_360px]">
-        <section className="pixel-panel relative min-h-[520px] p-3">
+        <section className="pixel-panel relative h-[calc(100vh-2rem)] min-h-[520px] p-3 md:h-[calc(100vh-3rem)]">
           {state && isRunning ? (
             <MazeCanvas maze={state.maze} position={state.playerPosition} />
           ) : state && isFinished ? (
