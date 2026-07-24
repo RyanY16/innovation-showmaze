@@ -1,0 +1,40 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "roomCodes": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.isString()"
+      }
+    },
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        "state": {
+          ".write": "auth != null && (!data.exists() || data.child('hostId').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['roomId', 'roomCode', 'hostId', 'status', 'maze', 'players'])"
+        },
+        "joins": {
+          "$playerId": {
+            ".write": "auth != null && (auth.uid === $playerId || !newData.exists())",
+            ".validate": "newData.hasChildren(['displayName', 'joinedAt']) && newData.child('displayName').isString() && newData.child('displayName').val().length <= 18"
+          }
+        },
+        "leaves": {
+          "$playerId": {
+            ".write": "auth != null && (auth.uid === $playerId || !newData.exists())",
+            ".validate": "newData.isNumber()"
+          }
+        },
+        "inputs": {
+          "$inputId": {
+            ".write": "auth != null && (!newData.exists() || newData.child('playerId').val() === auth.uid)",
+            ".validate": "!newData.exists() || (newData.hasChildren(['playerId', 'displayName', 'direction', 'receivedAt', 'windowId']) && newData.child('direction').val().matches(/^(up|down|left|right)$/))"
+          }
+        }
+      }
+    }
+  }
+}

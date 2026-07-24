@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-pixel: "Minecraft", "Mojangles", var(--font-body), "Courier New", ui-monospace, monospace;
+  --font-body: "Press Start 2P", ui-monospace, monospace;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: var(--font-pixel);
+}
+
+html,
+body {
+  min-height: 100%;
+  background: #050816;
+  color: #fff7cf;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-pixel);
+  image-rendering: pixelated;
+  background-image:
+    radial-gradient(circle at 16px 16px, rgba(255, 216, 74, 0.18) 0 3px, transparent 4px),
+    linear-gradient(90deg, rgba(51, 199, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(51, 199, 255, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px, 24px 24px, 24px 24px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.font-mono,
+.font-sans,
+.font-serif {
+  font-family: var(--font-pixel) !important;
+}
+
+.pixel-panel {
+  border: 4px solid #33c7ff;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 3px #050816, 6px 6px 0 0 #050816;
+  background: #10172a;
+}
+
+.pixel-button {
+  border: 4px solid #050816;
+  border-radius: 0;
+  box-shadow: inset -4px -4px 0 rgba(5, 8, 22, 0.35), inset 4px 4px 0 rgba(255, 255, 255, 0.25), 5px 5px 0 #050816;
+  background: #ffd84a;
+  color: #050816;
+  font-weight: 700;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.pixel-button.bg-cyan {
+  background: #33c7ff;
+  color: #050816;
+}
+
+.pixel-button.bg-coral {
+  background: #ff4d6d;
+  color: #ffffff;
+}
+
+.pixel-button.bg-mint {
+  background: #34d399;
+  color: #050816;
+}
+
+.pixel-button.bg-gold {
+  background: #ffd84a;
+  color: #050816;
+}
+
+.pixel-button.bg-bone,
+.pixel-button.bg-panel {
+  background: #fff7cf;
+  border-color: #050816;
+  color: #050816;
+}
+
+.pixel-button:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: inset 4px 4px 0 rgba(5, 8, 22, 0.35), 1px 1px 0 #050816;
+}
+
+.pixel-button:disabled {
+  filter: grayscale(0.65);
+  opacity: 0.6;
+}
+
+.hud-label {
+  font-size: 0.58rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: #33c7ff;
+  font-weight: 700;
+}
+
+.pixel-title {
+  font-family: var(--font-pixel);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.pixel-arrow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  height: 2.4rem;
+  image-rendering: pixelated;
+  width: 2.4rem;
+}
+
+.pixel-arrow-sm {
+  height: 1rem;
+  width: 1rem;
+}
+
+.pixel-arrow-block {
+  background: currentColor;
+}
+
+.scanlines::after {
+  pointer-events: none;
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 5px);
+  mix-blend-mode: soft-light;
+}
