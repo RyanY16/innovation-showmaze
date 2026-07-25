@@ -141,21 +141,30 @@ function routeWaypoints(difficulty: Difficulty, rows: number, columns: number): 
   const lastRow = rows - 1;
   const lastColumn = columns - 1;
   if (difficulty === "easy") {
+    const earlyColumn = Math.floor(columns * 0.55);
+    const middleRow = Math.floor(rows * 0.45);
+    const nearEndColumn = Math.max(2, columns - 3);
     return [
       { row: 0, column: 0 },
-      { row: 0, column: lastColumn },
+      { row: 0, column: earlyColumn },
+      { row: middleRow, column: earlyColumn },
+      { row: middleRow, column: nearEndColumn },
+      { row: lastRow, column: nearEndColumn },
       { row: lastRow, column: lastColumn }
     ];
   }
   if (difficulty === "medium") {
     const middleRow = Math.floor(rows * 0.5);
     const nearEndColumn = Math.max(2, columns - 3);
+    const earlyColumn = Math.floor(columns * 0.55);
     return [
       { row: 0, column: 0 },
-      { row: 0, column: nearEndColumn },
-      { row: middleRow, column: nearEndColumn },
+      { row: 0, column: earlyColumn },
+      { row: middleRow, column: earlyColumn },
       { row: middleRow, column: 2 },
-      { row: lastRow, column: 2 },
+      { row: Math.max(middleRow - 3, 1), column: 2 },
+      { row: Math.max(middleRow - 3, 1), column: nearEndColumn },
+      { row: lastRow, column: nearEndColumn },
       { row: lastRow, column: lastColumn }
     ];
   }
