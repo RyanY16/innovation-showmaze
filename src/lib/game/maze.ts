@@ -15,7 +15,7 @@ const delta: Record<Direction, Position> = {
 };
 
 export const difficultySettings: Record<Difficulty, { rows: number; columns: number; window: number }> = {
-  easy: { rows: 11, columns: 15, window: 100 },
+  easy: { rows: 9, columns: 13, window: 100 },
   medium: { rows: 15, columns: 21, window: 100 },
   hard: { rows: 17, columns: 25, window: 100 }
 };
@@ -26,7 +26,25 @@ const straightBias: Record<Difficulty, number> = {
   hard: 0.55
 };
 
+const routeDistanceLimit: Record<Difficulty, number> = {
+  easy: 28,
+  medium: 60,
+  hard: 70
+};
+
 export function createMaze(difficulty: Difficulty = "easy"): Maze {
+  let fallback: Maze | null = null;
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const maze = buildMaze(difficulty);
+    const distance = maze.distanceToExit[0][0];
+    if (findRightDownPath(maze.grid).length || !Number.isFinite(distance)) continue;
+    fallback ??= maze;
+    if (distance <= routeDistanceLimit[difficulty]) return maze;
+  }
+  return fallback ?? buildMaze(difficulty);
+}
+
+function buildMaze(difficulty: Difficulty): Maze {
   const { rows, columns } = difficultySettings[difficulty];
   const grid = Array.from({ length: rows }, () =>
     Array.from({ length: columns }, (): MazeCell => ({ top: true, right: true, bottom: true, left: true }))
@@ -55,7 +73,8 @@ export function createMaze(difficulty: Difficulty = "easy"): Maze {
 
   const start = { row: 0, column: 0 };
   const exit = { row: rows - 1, column: columns - 1 };
-  carveCrowdFriendlyRoute(grid, difficulty);
+  const protectedRoute = carveCrowdFriendlyRoute(grid, difficulty);
+  removeRightDownOnlyRoutes(grid, protectedRoute);
   return { grid, rows, columns, start, exit, distanceToExit: buildDistanceMap(grid, exit) };
 }
 
@@ -132,24 +151,26 @@ function carveCrowdFriendlyRoute(grid: MazeCell[][], difficulty: Difficulty) {
   const rows = grid.length;
   const columns = grid[0].length;
   const waypoints = routeWaypoints(difficulty, rows, columns);
+  const protectedRoute = new Set<string>();
   for (let index = 0; index < waypoints.length - 1; index += 1) {
-    carveSegment(grid, waypoints[index], waypoints[index + 1]);
+    carveSegment(grid, waypoints[index], waypoints[index + 1], protectedRoute);
   }
+  return protectedRoute;
 }
 
 function routeWaypoints(difficulty: Difficulty, rows: number, columns: number): Position[] {
   const lastRow = rows - 1;
   const lastColumn = columns - 1;
   if (difficulty === "easy") {
-    const earlyColumn = Math.floor(columns * 0.55);
-    const middleRow = Math.floor(rows * 0.45);
-    const nearEndColumn = Math.max(2, columns - 3);
+    const earlyColumn = Math.max(5, Math.floor(columns * 0.62));
+    const middleRow = Math.floor(rows * 0.38);
+    const backtrackColumn = Math.max(2, earlyColumn - 2);
     return [
       { row: 0, column: 0 },
       { row: 0, column: earlyColumn },
       { row: middleRow, column: earlyColumn },
-      { row: middleRow, column: nearEndColumn },
-      { row: lastRow, column: nearEndColumn },
+      { row: middleRow, column: backtrackColumn },
+      { row: lastRow, column: backtrackColumn },
       { row: lastRow, column: lastColumn }
     ];
   }
@@ -190,13 +211,107 @@ function routeWaypoints(difficulty: Difficulty, rows: number, columns: number): 
   ];
 }
 
-function carveSegment(grid: MazeCell[][], start: Position, end: Position) {
+function carveSegment(grid: MazeCell[][], start: Position, end: Position, protectedRoute: Set<string>) {
   let current = start;
   while (current.row !== end.row || current.column !== end.column) {
     const direction = current.column < end.column ? "right" : current.column > end.column ? "left" : current.row < end.row ? "down" : "up";
     const next = add(current, delta[direction]);
     grid[current.row][current.column][directionToWall(direction)] = false;
     grid[next.row][next.column][directionToWall(opposite[direction])] = false;
+    protectedRoute.add(edgeKey(current, next));
     current = next;
   }
+}
+
+function removeRightDownOnlyRoutes(grid: MazeCell[][], protectedRoute: Set<string>) {
+  let path = findRightDownPath(grid);
+  let guard = 0;
+  while (path.length && guard < 500) {
+    const removable = [...path]
+      .sort((a, b) => Number(protectedRoute.has(edgeKey(a.from, a.to))) - Number(protectedRoute.has(edgeKey(b.from, b.to))))
+      .find((edge) => {
+        setPassage(grid, edge.from, edge.to, true);
+        const connected = hasExitPath(grid);
+        if (!connected) setPassage(grid, edge.from, edge.to, false);
+        return connected;
+      });
+    if (!removable) break;
+    path = findRightDownPath(grid);
+    guard += 1;
+  }
+}
+
+function hasExitPath(grid: MazeCell[][]) {
+  const rows = grid.length;
+  const columns = grid[0].length;
+  const seen = Array.from({ length: rows }, () => Array.from({ length: columns }, () => false));
+  const queue: Position[] = [{ row: 0, column: 0 }];
+  seen[0][0] = true;
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const current = queue[index];
+    if (current.row === rows - 1 && current.column === columns - 1) return true;
+    for (const direction of Object.keys(delta) as Direction[]) {
+      if (grid[current.row][current.column][directionToWall(direction)]) continue;
+      const next = add(current, delta[direction]);
+      if (!inBounds(next, rows, columns) || seen[next.row][next.column]) continue;
+      seen[next.row][next.column] = true;
+      queue.push(next);
+    }
+  }
+
+  return false;
+}
+
+function setPassage(grid: MazeCell[][], from: Position, to: Position, closed: boolean) {
+  const direction = to.column > from.column ? "right" : to.column < from.column ? "left" : to.row > from.row ? "down" : "up";
+  grid[from.row][from.column][directionToWall(direction)] = closed;
+  grid[to.row][to.column][directionToWall(opposite[direction])] = closed;
+}
+
+function findRightDownPath(grid: MazeCell[][]) {
+  const rows = grid.length;
+  const columns = grid[0].length;
+  const seen = Array.from({ length: rows }, () => Array.from({ length: columns }, () => false));
+  const parent = new Map<string, Position>();
+  seen[0][0] = true;
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      if (!seen[row][column]) continue;
+      const current = { row, column };
+      if (column + 1 < columns && !grid[row][column].right && !seen[row][column + 1]) {
+        seen[row][column + 1] = true;
+        parent.set(positionKey({ row, column: column + 1 }), current);
+      }
+      if (row + 1 < rows && !grid[row][column].bottom && !seen[row + 1][column]) {
+        seen[row + 1][column] = true;
+        parent.set(positionKey({ row: row + 1, column }), current);
+      }
+    }
+  }
+
+  const exit = { row: rows - 1, column: columns - 1 };
+  if (!seen[exit.row][exit.column]) return [];
+  const path: Array<{ from: Position; to: Position }> = [];
+  let current = exit;
+  while (current.row !== 0 || current.column !== 0) {
+    const previous = parent.get(positionKey(current));
+    if (!previous) return [];
+    path.unshift({ from: previous, to: current });
+    current = previous;
+  }
+  return path;
+}
+
+function edgeKey(a: Position, b: Position) {
+  if (a.row === b.row) {
+    const column = Math.min(a.column, b.column);
+    return `${a.row}:${column}:right`;
+  }
+  const row = Math.min(a.row, b.row);
+  return `${row}:${a.column}:down`;
+}
+
+function positionKey(position: Position) {
+  return `${position.row}:${position.column}`;
 }
