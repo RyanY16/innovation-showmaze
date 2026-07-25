@@ -160,15 +160,22 @@ function routeWaypoints(difficulty: Difficulty, rows: number, columns: number): 
     ];
   }
   const upperRow = Math.floor(rows * 0.28);
+  const middleRow = Math.floor(rows * 0.5);
   const lowerRow = Math.floor(rows * 0.68);
   const nearEndColumn = Math.max(3, columns - 4);
+  const firstColumn = Math.floor(columns * 0.34);
+  const middleColumn = Math.floor(columns * 0.58);
   return [
     { row: 0, column: 0 },
-    { row: 0, column: nearEndColumn },
+    { row: 0, column: firstColumn },
+    { row: upperRow, column: firstColumn },
     { row: upperRow, column: nearEndColumn },
-    { row: upperRow, column: 3 },
+    { row: middleRow, column: nearEndColumn },
+    { row: middleRow, column: 3 },
     { row: lowerRow, column: 3 },
-    { row: lowerRow, column: nearEndColumn },
+    { row: lowerRow, column: middleColumn },
+    { row: lastRow - 2, column: middleColumn },
+    { row: lastRow - 2, column: nearEndColumn },
     { row: lastRow, column: nearEndColumn },
     { row: lastRow, column: lastColumn }
   ];
