@@ -50,9 +50,6 @@ export default function LandingPage() {
           <h1 className="pixel-title text-5xl leading-tight md:text-7xl">
             <AlternatingTitle text="Innovation Showmaze" />
           </h1>
-          <p className="mt-5 max-w-xl text-lg leading-8 text-bone/80">
-            One shared cursor, one maze, and a room full of phones steering the demo together.
-          </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <button className="pixel-button bg-[#fbbc04] px-6 py-4" onClick={createRoom} disabled={creating}>
               {creating ? "Creating..." : "Create Room"}

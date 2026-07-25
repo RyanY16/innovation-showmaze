@@ -27,7 +27,7 @@ export default function DisplayPage() {
   const timer = useMemo(() => {
     if (state?.status === "countdown" && state.countdownEndsAt) return `${Math.max(1, Math.ceil((state.countdownEndsAt - now) / 1000))}`;
     if (state?.status === "playing" && state.roundEndsAt) return `${Math.max(0, Math.ceil((state.roundEndsAt - now) / 1000))}s`;
-    if (!state?.startedAt) return "30s";
+    if (!state?.startedAt) return "60s";
     const end = state.finishedAt ?? state.roundEndsAt ?? now;
     const seconds = Math.max(0, Math.ceil((end - state.startedAt) / 1000));
     return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;

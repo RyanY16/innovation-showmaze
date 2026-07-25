@@ -41,7 +41,7 @@ const clients = new Map<WebSocket, ClientContext>();
 const port = Number(process.env.PORT ?? 8787);
 const roundDifficulties: Difficulty[] = ["easy", "medium", "hard"];
 const countdownDurationMs = 3000;
-const roundDurationMs = 30000;
+const roundDurationMs = 60000;
 
 const httpServer = createServer((request, response) => {
   setCors(response);

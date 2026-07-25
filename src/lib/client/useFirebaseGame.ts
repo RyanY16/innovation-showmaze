@@ -23,7 +23,7 @@ type InputRecord = SubmittedInput;
 
 const roundDifficulties = ["easy", "medium", "hard"] as const;
 const countdownDurationMs = 3000;
-const roundDurationMs = 30000;
+const roundDurationMs = 60000;
 
 export function useFirebaseGame() {
   const [state, setState] = useState<PublicRoomState | null>(null);
