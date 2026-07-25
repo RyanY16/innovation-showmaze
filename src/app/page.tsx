@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { gameHttpUrl, getOrCreateId } from "@/lib/client/config";
 import { createFirebaseRoom, getAnonymousPlayerId, isFirebaseConfigured } from "@/lib/client/firebase";
+import { createMaze } from "@/lib/game/maze";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -84,8 +85,9 @@ function PlaceholderMaze() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rows = 7;
-    const columns = 10;
+    const maze = createMaze("easy");
+    const rows = maze.rows;
+    const columns = maze.columns;
     const scale = 20;
     const width = columns * scale;
     const height = rows * scale;
@@ -100,25 +102,18 @@ function PlaceholderMaze() {
     context.fillStyle = "#050816";
     context.fillRect(0, 0, width, height);
 
-    const grid = createPreviewMaze(rows, columns);
-    for (let row = 0; row < rows; row += 1) {
-      for (let column = 0; column < columns; column += 1) {
-        const x = column * scale;
-        const y = row * scale;
-        context.fillStyle = (row + column) % 2 ? "#09122a" : "#0b1735";
-        context.fillRect(x + 2, y + 2, scale - 4, scale - 4);
-      }
-    }
+    context.fillStyle = "#09122a";
+    context.fillRect(4, 4, width - 8, height - 8);
 
-    drawPreviewMarker(context, { row: 0, column: 0 }, scale, "#33c7ff");
-    drawPreviewMarker(context, { row: rows - 1, column: columns - 1 }, scale, "#34d399");
+    drawPreviewMarker(context, maze.start, scale, "#33c7ff");
+    drawPreviewMarker(context, maze.exit, scale, "#34d399");
 
     context.strokeStyle = "#2f6bff";
     context.lineWidth = Math.max(3, Math.floor(scale * 0.14));
     context.lineCap = "square";
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < columns; column += 1) {
-        const cell = grid[row][column];
+        const cell = maze.grid[row][column];
         const x = column * scale;
         const y = row * scale;
         context.beginPath();
@@ -143,67 +138,6 @@ function PlaceholderMaze() {
       <canvas ref={canvasRef} className="block w-full [image-rendering:pixelated]" aria-label="Maze preview" />
     </div>
   );
-}
-
-type PreviewCell = {
-  top: boolean;
-  right: boolean;
-  bottom: boolean;
-  left: boolean;
-};
-
-function createPreviewMaze(rows: number, columns: number): PreviewCell[][] {
-  const grid = Array.from({ length: rows }, () =>
-    Array.from({ length: columns }, (): PreviewCell => ({ top: true, right: true, bottom: true, left: true }))
-  );
-  const path = [
-    [0, 0], [0, 1], [1, 1], [2, 1], [2, 2], [2, 3], [1, 3], [0, 3], [0, 4], [0, 5],
-    [1, 5], [2, 5], [3, 5], [3, 4], [4, 4], [5, 4], [5, 5], [5, 6], [4, 6], [3, 6],
-    [2, 6], [2, 7], [2, 8], [3, 8], [4, 8], [5, 8], [6, 8], [6, 9]
-  ];
-
-  for (let index = 0; index < path.length - 1; index += 1) {
-    const [row, column] = path[index];
-    const [nextRow, nextColumn] = path[index + 1];
-    if (nextRow === row && nextColumn === column + 1) {
-      grid[row][column].right = false;
-      grid[nextRow][nextColumn].left = false;
-    } else if (nextRow === row && nextColumn === column - 1) {
-      grid[row][column].left = false;
-      grid[nextRow][nextColumn].right = false;
-    } else if (nextRow === row + 1 && nextColumn === column) {
-      grid[row][column].bottom = false;
-      grid[nextRow][nextColumn].top = false;
-    } else if (nextRow === row - 1 && nextColumn === column) {
-      grid[row][column].top = false;
-      grid[nextRow][nextColumn].bottom = false;
-    }
-  }
-
-  const branches = [
-    [[1, 1], [1, 2]],
-    [[4, 4], [4, 3], [5, 3]],
-    [[3, 8], [3, 9]],
-    [[5, 6], [6, 6], [6, 5]],
-    [[0, 5], [0, 6], [1, 6]]
-  ];
-  for (const branch of branches) {
-    for (let index = 0; index < branch.length - 1; index += 1) {
-      const [row, column] = branch[index];
-      const [nextRow, nextColumn] = branch[index + 1];
-      if (nextRow === row && nextColumn === column + 1) {
-        grid[row][column].right = false;
-        grid[nextRow][nextColumn].left = false;
-      } else if (nextRow === row + 1 && nextColumn === column) {
-        grid[row][column].bottom = false;
-        grid[nextRow][nextColumn].top = false;
-      } else if (nextRow === row && nextColumn === column - 1) {
-        grid[row][column].left = false;
-        grid[nextRow][nextColumn].right = false;
-      }
-    }
-  }
-  return grid;
 }
 
 function previewLine(context: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
